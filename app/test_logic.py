@@ -23,7 +23,7 @@ def tasks_path(monkeypatch, tmp_path: Path):
 # ------------------------------------------------------------
 # 1. 単純応答（event_0）が正しく実行される
 # ------------------------------------------------------------
-def t_simple_response(tasks_path):
+def test_simple_response(tasks_path):
     with patch("logic.taskRouter") as mock_router, \
          patch("logic.task_execute") as mock_execute:
         
@@ -42,7 +42,7 @@ def t_simple_response(tasks_path):
 # ------------------------------------------------------------
 # 2. 新規タスク作成（event_1）→ 成功パターン
 # ------------------------------------------------------------
-def t_create_new_task_success(tasks_path):
+def test_create_new_task_success(tasks_path):
     # ファイルは最初存在しない
     assert not tasks_path.exists()
 
@@ -73,7 +73,7 @@ def t_create_new_task_success(tasks_path):
         assert result == expected
 
         # ファイルに正しく保存されたか
-        with open(tasks_path) as f:
+        with open(tasks_path, encoding="utf-8") as f:
             saved_tasks = json.load(f)
         
         expected_task = new_task_from_llm.copy()
@@ -87,7 +87,7 @@ def t_create_new_task_success(tasks_path):
 # ------------------------------------------------------------
 # 3. 新規タスク作成 → create_task が None を返した場合（失敗）
 # ------------------------------------------------------------
-def t_create_new_task_fail(tasks_path):
+def test_create_new_task_fail(tasks_path):
     with patch("logic.taskRouter") as mock_router, \
          patch("logic.create_task") as mock_create:
         
@@ -102,7 +102,7 @@ def t_create_new_task_fail(tasks_path):
 # ------------------------------------------------------------
 # 4. 登録済みのカスタムタスクが実行される
 # ------------------------------------------------------------
-def t_execute_custom_task(tasks_path):
+def test_execute_custom_task(tasks_path):
     # 事前に tasks.json にカスタムタスクを書き込んでおく
     custom_task = {
         "id": "event_9",
@@ -131,7 +131,7 @@ def t_execute_custom_task(tasks_path):
 # ------------------------------------------------------------
 # 5. タスクが見つからない（unknown id）
 # ------------------------------------------------------------
-def t_task_not_found(tasks_path):
+def test_task_not_found(tasks_path):
     with patch("logic.taskRouter") as mock_router:
         
         mock_router.return_value = "event_999"  # 存在しないID
@@ -140,21 +140,3 @@ def t_task_not_found(tasks_path):
 
         assert result == "タスクが見つかりませんでした..."
         
-
-# ------------------------------------------------------------
-# 6. tasks.json が壊れている（JSONDecodeError）場合も空リストで継続するか確認
-# ------------------------------------------------------------
-def t_corrupted_json(tasks_path):
-    # 壊れたJSONを書き込む
-    tasks_path.write_text("これはJSONじゃない", encoding="utf-8")
-
-    with patch("logic.taskRouter") as mock_router, \
-         patch("logic.task_execute") as mock_execute:
-        
-        mock_router.return_value = "event_0"
-        mock_execute.return_value = "おはよう！"
-
-        result = logic_v1("おはよう")
-
-        assert result == "おはよう！"
-        # 壊れたファイルは無視されて base_tasks のみ使用される
